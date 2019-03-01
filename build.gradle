@@ -1,7 +1,11 @@
 buildscript {
     repositories {
         mavenCentral()
+        google()
         jcenter()
+        maven { url 'https://plugins.gradle.org/m2/' }
+        maven { url 'https://dl.bintray.com/kotlin/kotlin-eap/' }
+        maven { url 'https://dl.bintray.com/kotlin/kotlin-dev/' }
     }
 }
 
@@ -11,15 +15,29 @@ plugins {
 repositories {
     mavenCentral()
     jcenter()
+    maven { url "https://dl.bintray.com/kotlin/kotlinx" }
     maven { url "http://dl.bintray.com/kotlin/ktor" }
     maven { url "https://kotlin.bintray.com/kotlin-js-wrappers" }
+    maven { url 'https://dl.bintray.com/kotlin/kotlin-eap/' }
+    maven { url 'https://dl.bintray.com/kotlin/kotlin-dev/' }
 }
 def ktor_version = '1.0.1'
 def logback_version = '1.2.3'
 
 kotlin {
     jvm()
+    jvm('backend')
     js() {
+        compilations.all {
+            kotlinOptions {
+                languageVersion = "1.3"
+                moduleKind = "umd"
+                sourceMap = true
+                metaInfo = true
+            }
+        }
+    }
+    js("frontend") {
         compilations.all {
             kotlinOptions {
                 languageVersion = "1.3"
@@ -61,7 +79,6 @@ kotlin {
         jsMain {
             dependencies {
                 implementation kotlin('stdlib-js')
-                implementation "org.jetbrains:kotlin-css:+"
                 implementation "org.jetbrains:kotlin-css-js:+"
             }
         }
@@ -70,12 +87,26 @@ kotlin {
                 implementation kotlin('test-js')
             }
         }
+
+        backendMain {
+            dependsOn jvmMain
+        }
+        frontendMain {
+            dependsOn jsMain
+        }
     }
 }
 
-def webFolder = new File(project.buildDir, "../src/jsMain/web")
-def jsCompilations = kotlin.targets.js.compilations
 
+/*
+    frontend
+*/
+
+
+
+def webFolder = new File(project.buildDir, "../src/jsMain/web")
+
+def jsCompilations = kotlin.targets.js.compilations
 task populateWebFolder(dependsOn: [jsMainClasses]) {
     doLast {
         copy {
@@ -90,8 +121,34 @@ task populateWebFolder(dependsOn: [jsMainClasses]) {
         }
     }
 }
-
 jsJar.dependsOn(populateWebFolder)
+
+
+def frontendCompilations = kotlin.targets.frontend.compilations
+task populateFrontendWebFolder(dependsOn: [frontendMainClasses]) {
+    doLast {
+        copy {
+            from frontendCompilations.main.output
+            from kotlin.sourceSets.frontendMain.resources.srcDirs
+            frontendCompilations.test.runtimeDependencyFiles.each {
+                if (it.exists() && !it.isDirectory()) {
+                    from zipTree(it.absolutePath).matching { include '*.js' }
+                }
+            }
+            into webFolder
+        }
+    }
+}
+frontendJar.dependsOn(populateWebFolder)
+
+
+
+
+/*
+    backend
+*/
+
+
 
 task run(type: JavaExec, dependsOn: [jvmMainClasses, jsJar]) {
     main = "sample.SampleJvmKt"
@@ -99,6 +156,17 @@ task run(type: JavaExec, dependsOn: [jvmMainClasses, jsJar]) {
         [
                 kotlin.targets.jvm.compilations.main.output.allOutputs.files,
                 configurations.jvmRuntimeClasspath,
+        ]
+    }
+    args = []
+}
+
+task runBackend(type: JavaExec, dependsOn: [backendMainClasses, frontendJar]) {
+    main = "sample.SampleJvmKt"
+    classpath {
+        [
+                kotlin.targets.backend.compilations.main.output.allOutputs.files,
+                configurations.backendRuntimeClasspath,
         ]
     }
     args = []
