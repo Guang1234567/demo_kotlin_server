@@ -5,18 +5,20 @@ import io.ktor.application.Application
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.auth.*
+import io.ktor.sessions.*
 import io.ktor.features.PartialContent
 import io.ktor.freemarker.FreeMarker
 import io.ktor.freemarker.FreeMarkerContent
 import io.ktor.http.content.files
 import io.ktor.http.content.static
 import io.ktor.request.receiveParameters
-import io.ktor.response.respond
-import io.ktor.response.respondRedirect
+import io.ktor.response.*
 import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.routing.route
 import io.ktor.routing.routing
 import sample.model.IndexData
+import sample.model.MySession
 import java.io.File
 
 
@@ -55,29 +57,38 @@ fun Application.module() {
         }
     }
 
+    install(Sessions) {
+        cookie<MySession>("SESSION")
+    }
+
     routing {
         static("/static") {
             files(webDir)
         }
 
         get("/") {
-            call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
+            //call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
+
+            val session = call.sessions.get<MySession>()
+            session?.username?.also {
+                call.respondText("User is logged")
+            } ?: call.respondRedirect("/login", permanent = false)
+            //call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
         }
 
-        get("/login") {
-            call.respond(FreeMarkerContent("login.ftl", null))
-        }
+        route("/login") {
+            get {
+                call.respond(FreeMarkerContent("login.ftl", null))
+            }
 
-        authenticate("login") {
-            post("/login") {
-                /*val post = call.receiveParameters()
-                if (post["username"] != null && post["username"] == post["password"]) {
-                    call.respondRedirect("/", permanent = false) // 登陆成功回到主页
-                } else {
-                    call.respond(FreeMarkerContent("login.ftl", mapOf("error" to "Invalid login")))
-                }*/
-                val principal = call.principal<UserIdPrincipal>()
-                call.respondRedirect("/", permanent = false)
+            authenticate("login") {
+                post {
+                    val principal = call.principal<UserIdPrincipal>()
+                    principal?.also {
+                        call.sessions.set(MySession(principal.name))
+                        call.respondRedirect("/", permanent = false)
+                    } ?: call.respond(FreeMarkerContent("login.ftl", mapOf("error" to "Invalid login")))
+                }
             }
         }
     }

@@ -1,4 +1,4 @@
-(function (_, Kotlin, $module$core_js_library_fn_object_assign) {
+(function (_, Kotlin, $module$core_js_features_object_assign) {
   'use strict';
   var $$importsForInline$$ = _.$$importsForInline$$ || (_.$$importsForInline$$ = {});
   var getCallableRef = Kotlin.getCallableRef;
@@ -47,7 +47,7 @@
   }));
   function clone(obj) {
     var obj_0 = {};
-    return $module$core_js_library_fn_object_assign(obj_0, obj);
+    return $module$core_js_features_object_assign(obj_0, obj);
   }
   var assign = defineInlineFunction('kotlin-extensions.kotlinext.js.assign_bjvcay$', wrapFunction(function () {
     var clone = _.kotlinext.js.clone_issdgt$;
@@ -59,7 +59,7 @@
   }));
   function assign_0(dest, src) {
     console.warn('kotlinext.js.assign is deprecated, use kotlinext.js.objectAssign instead');
-    return $module$core_js_library_fn_object_assign(dest, src);
+    return $module$core_js_features_object_assign(dest, src);
   }
   function toPlainObjectStripNull(obj) {
     var obj_0 = {};
@@ -113,6 +113,6 @@
   package$js.invoke_9p99ed$ = invoke_6;
   Kotlin.defineModule('kotlin-extensions', _);
   return _;
-}(module.exports, require('kotlin'), require('core-js/library/fn/object/assign')));
+}(module.exports, require('kotlin'), require('core-js/features/object/assign')));
 
 //# sourceMappingURL=kotlin-extensions.js.map

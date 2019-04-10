@@ -12,6 +12,7 @@ buildscript {
 plugins {
     id 'kotlin-multiplatform' version '1.3.21'
 }
+
 repositories {
     mavenCentral()
     jcenter()
@@ -103,7 +104,6 @@ kotlin {
 */
 
 
-
 def webFolder = new File(project.buildDir, "../src/jsMain/web")
 
 def jsCompilations = kotlin.targets.js.compilations
@@ -142,14 +142,12 @@ task populateFrontendWebFolder(dependsOn: [frontendMainClasses]) {
 frontendJar.dependsOn(populateWebFolder)
 
 
-
-
 /*
     backend
 */
 
 
-
+/*
 task run(type: JavaExec, dependsOn: [jvmMainClasses, jsJar]) {
     main = "sample.SampleJvmKt"
     classpath {
@@ -160,9 +158,10 @@ task run(type: JavaExec, dependsOn: [jvmMainClasses, jsJar]) {
     }
     args = []
 }
+*/
 
 task runBackend(type: JavaExec, dependsOn: [backendMainClasses, frontendJar]) {
-    main = "sample.SampleJvmKt"
+    main = "io.ktor.server.netty.EngineMain"
     classpath {
         [
                 kotlin.targets.backend.compilations.main.output.allOutputs.files,
