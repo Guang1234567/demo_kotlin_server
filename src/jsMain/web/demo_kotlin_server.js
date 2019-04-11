@@ -47,13 +47,14 @@
     var message = salutation + ' from Kotlin.JS ' + hello() + ', check me value: ' + (new Sample()).checkMe();
     (tmp$ = document.getElementById('js-response')) != null ? (tmp$.textContent = message) : null;
   }
-  var package$sample = _.sample || (_.sample = {});
-  package$sample.hello = hello;
-  package$sample.Sample = Sample;
-  Object.defineProperty(package$sample, 'Platform', {
+  var package$wechat = _.wechat || (_.wechat = {});
+  var package$open = package$wechat.open || (package$wechat.open = {});
+  package$open.hello = hello;
+  package$open.Sample = Sample;
+  Object.defineProperty(package$open, 'Platform', {
     get: Platform_getInstance
   });
-  package$sample.helloWorld = helloWorld;
+  package$open.helloWorld = helloWorld;
   Kotlin.defineModule('demo_kotlin_server', _);
   return _;
 }));

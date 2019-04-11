@@ -1,4 +1,4 @@
-package sample
+package wechat.open
 
 import kotlin.test.Test
 import kotlin.test.assertTrue

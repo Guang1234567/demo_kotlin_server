@@ -1,4 +1,4 @@
-package sample
+package wechat.open
 
 actual class Sample {
     actual fun checkMe() = 77

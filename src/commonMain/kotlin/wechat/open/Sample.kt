@@ -1,4 +1,4 @@
-package sample
+package wechat.open
 
 expect class Sample() {
     fun checkMe(): Int

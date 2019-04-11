@@ -2,40 +2,25 @@ package wechat.open
 
 import freemarker.cache.ClassTemplateLoader
 import io.ktor.application.Application
-import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.auth.*
-import io.ktor.sessions.*
+import io.ktor.auth.Authentication
+import io.ktor.features.CORS
+import io.ktor.features.ContentNegotiation
 import io.ktor.features.PartialContent
+import io.ktor.features.StatusPages
 import io.ktor.freemarker.FreeMarker
-import io.ktor.freemarker.FreeMarkerContent
-import io.ktor.http.content.files
-import io.ktor.http.content.static
-import io.ktor.request.receiveParameters
-import io.ktor.response.*
-import io.ktor.routing.get
-import io.ktor.routing.post
-import io.ktor.routing.route
+import io.ktor.gson.gson
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.routing.routing
-import sample.model.IndexData
-import sample.model.MySession
-import java.io.File
-
+import io.ktor.sessions.Sessions
+import wechat.open.controller.HomeCfg
+import wechat.open.controller.LoginCfg
+import wechat.open.controller.StaticResCfg
+import wechat.open.controller.load
+import wechat.open.utils.registerRedirections
 
 fun Application.module() {
-    val currentDir = File("").absoluteFile
-    environment.log.info("Current directory: $currentDir")
-
-    val webDir = kotlin.collections.listOf(
-        "web",
-        "../src/jsMain/web",
-        "src/jsMain/web"
-    ).map {
-        File(currentDir, it)
-    }.firstOrNull { it.isDirectory }?.absoluteFile ?: kotlin.error("Can't find 'web' folder for this sample")
-
-    environment.log.info("Web directory: $webDir")
-
     install(FreeMarker) {
         templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
     }
@@ -44,52 +29,65 @@ fun Application.module() {
     }
 
     install(Authentication) {
-        form("login") {
-            userParamName = "username"
-            passwordParamName = "password"
-            challenge = FormAuthChallenge.Unauthorized
-            validate { credentials ->
-                if (credentials.name == credentials.password)
-                    UserIdPrincipal(credentials.name)
-                else
-                    null
-            }
-        }
+        load(LoginCfg)
     }
 
     install(Sessions) {
-        cookie<MySession>("SESSION")
+        load(LoginCfg)
+    }
+
+    install(CORS) {
+        method(HttpMethod.Options)
+        method(HttpMethod.Get)
+        method(HttpMethod.Post)
+        method(HttpMethod.Put)
+        method(HttpMethod.Delete)
+        method(HttpMethod.Patch)
+        header(HttpHeaders.Authorization)
+        allowCredentials = true
+        anyHost()
+    }
+
+    install(ContentNegotiation) {
+        gson {
+            setPrettyPrinting()
+
+            /*disableHtmlEscaping()
+            disableInnerClassSerialization()
+            enableComplexMapKeySerialization()
+
+            serializeNulls()
+
+            serializeSpecialFloatingPointValues()
+            excludeFieldsWithoutExposeAnnotation()
+
+            setDateFormat(...)
+
+            generateNonExecutableJson()
+
+            setFieldNamingPolicy()
+            setLenient()
+            setLongSerializationPolicy(...)
+            setExclusionStrategies(...)
+            setVersion(0.0)
+            addDeserializationExclusionStrategy(...)
+            addSerializationExclusionStrategy(...)
+            excludeFieldsWithModifiers(Modifier.TRANSIENT)
+
+            registerTypeAdapter(...)
+            registerTypeAdapterFactory(...)
+            registerTypeHierarchyAdapter(..., ...)*/
+        }
+    }
+
+    install(StatusPages) {
+        registerRedirections()
+        load(LoginCfg)
     }
 
     routing {
-        static("/static") {
-            files(webDir)
-        }
-
-        get("/") {
-            //call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
-
-            val session = call.sessions.get<MySession>()
-            session?.username?.also {
-                call.respondText("User is logged")
-            } ?: call.respondRedirect("/login", permanent = false)
-            //call.respond(FreeMarkerContent("index.ftl", mapOf("data" to IndexData(listOf(1, 2, 3))), ""))
-        }
-
-        route("/login") {
-            get {
-                call.respond(FreeMarkerContent("login.ftl", null))
-            }
-
-            authenticate("login") {
-                post {
-                    val principal = call.principal<UserIdPrincipal>()
-                    principal?.also {
-                        call.sessions.set(MySession(principal.name))
-                        call.respondRedirect("/", permanent = false)
-                    } ?: call.respond(FreeMarkerContent("login.ftl", mapOf("error" to "Invalid login")))
-                }
-            }
-        }
+        load(StaticResCfg, this@module)
+        load(HomeCfg)
+        load(LoginCfg)
     }
 }
