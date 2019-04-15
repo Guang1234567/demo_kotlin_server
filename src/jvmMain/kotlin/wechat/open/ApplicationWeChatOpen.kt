@@ -14,13 +14,22 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.routing.routing
 import io.ktor.sessions.Sessions
-import wechat.open.controller.HomeCfg
-import wechat.open.controller.LoginCfg
-import wechat.open.controller.StaticResCfg
-import wechat.open.controller.load
+import org.kodein.di.Kodein
+import org.kodein.di.direct
+import org.kodein.di.generic.instance
+import wechat.open.controller.*
+import wechat.open.di.AppScopeKodein
+import wechat.open.model.services.DbService
 import wechat.open.utils.registerRedirections
 
 fun Application.module() {
+    di(AppScopeKodein())
+}
+
+fun Application.di(injector: Kodein) {
+
+    injector.direct.instance<DbService>().connect()
+
     install(FreeMarker) {
         templateLoader = ClassTemplateLoader(this::class.java.classLoader, "templates")
     }
@@ -86,8 +95,9 @@ fun Application.module() {
     }
 
     routing {
-        load(StaticResCfg, this@module)
+        load(StaticResCfg, this@di)
         load(HomeCfg)
-        load(LoginCfg)
+        loginModule(LoginCfg)
+        cfgSnippet(injector.direct.instance())
     }
 }

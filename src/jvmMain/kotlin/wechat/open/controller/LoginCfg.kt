@@ -2,11 +2,13 @@ package wechat.open.controller
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.auth.*
 import io.ktor.auth.jwt.jwt
 import io.ktor.features.StatusPages
 import io.ktor.freemarker.FreeMarkerContent
+import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
 import io.ktor.routing.Routing
@@ -14,10 +16,9 @@ import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.route
 import io.ktor.sessions.*
-import wechat.open.utils.redirect
 import kotlin.reflect.KClass
 
-data class MySession(val username: String)
+data class MySession(val username: String, val token: String)
 
 class SimpleJWT(secret: String) {
     private val algorithm = Algorithm.HMAC256(secret)
@@ -49,13 +50,28 @@ private inline fun <reified T> StatusPages.Configuration.registerSessionNotFound
     }
 }
 
+class InvalidCredentialsException(message: String) : RuntimeException(message)
+
+inline fun ApplicationCall.throwInvalidCredentialsException(message: String): Nothing =
+    throw InvalidCredentialsException(message)
+
+inline fun <reified T: Principal> ApplicationCall.getPrincipalOrThrow(message: String): T =
+    this.principal<T>() ?: throwInvalidCredentialsException(message)
+
+private inline fun <reified T> StatusPages.Configuration.registerInvalidCredentialsException() {
+    exception<InvalidCredentialsException> { exception ->
+        call.respond(HttpStatusCode.Unauthorized, mapOf("OK" to false, "error" to (exception.message ?: "")))
+    }
+}
+
 object LoginCfg {}
 
 fun StatusPages.Configuration.load(cfg: LoginCfg) {
     registerSessionNotFoundRedirect<MySession>("/login")
+    registerInvalidCredentialsException<InvalidCredentialsException>()
 }
 
-
+val simpleJwt = SimpleJWT("my-super-secret-for-jwt")
 fun Authentication.Configuration.load(cfg: LoginCfg) {
     form("login") {
         userParamName = "username"
@@ -64,13 +80,14 @@ fun Authentication.Configuration.load(cfg: LoginCfg) {
         validate { credentials ->
             if (credentials.name == credentials.password)
                 UserIdPrincipal(credentials.name)
-            else
+            else {
+                throwInvalidCredentialsException("登录失败: 账号密码不对!")
                 null
+            }
         }
     }
 
     jwt("jwt") {
-        val simpleJwt = SimpleJWT("my-super-secret-for-jwt")
         verifier(simpleJwt.verifier)
         validate {
             UserIdPrincipal(it.payload.getClaim("name").asString())
@@ -83,7 +100,7 @@ fun Sessions.Configuration.load(cfg: LoginCfg) {
     cookie<MySession>("SESSION")
 }
 
-fun Routing.load(cfg: LoginCfg) {
+fun Routing.loginModule(cfg: LoginCfg) {
     route("/login") {
         get {
             call.respond(FreeMarkerContent("login.ftl", null))
@@ -91,12 +108,13 @@ fun Routing.load(cfg: LoginCfg) {
 
         authenticate("login") {
             post {
-                val principal = call.principal<UserIdPrincipal>()
-                principal?.also {
-                    call.sessions.set(MySession(principal.name))
-                    redirect("/", permanent = false)
+                val principal: UserIdPrincipal =
+                    call.principal<UserIdPrincipal>() ?: call.throwInvalidCredentialsException("No principal")
+                principal.apply {
+                    val token = simpleJwt.sign(name)
+                    call.sessions.set(MySession(name, token))
+                    call.respond(mapOf("OK" to true, "token" to token))
                 }
-                    ?: call.respond(FreeMarkerContent("login.ftl", mapOf("error" to "Invalid login")))
             }
         }
     }

@@ -25,6 +25,10 @@ repositories {
 def ktor_version = '1.1.2'
 def kotlinx_coroutines_version = '1.1.1'
 def logback_version = '1.2.3'
+def kodein_di_version = '6.1.0'
+def exposed_version = '0.13.6'
+def h2_version = '1.4.196'
+
 
 kotlin {
     jvm()
@@ -72,8 +76,17 @@ kotlin {
                 implementation "io.ktor:ktor-auth:$ktor_version"
                 implementation "io.ktor:ktor-auth-jwt:$ktor_version"
                 implementation "io.ktor:ktor-gson:$ktor_version"
+                implementation "io.ktor:ktor-websockets:$ktor_version"
+
                 implementation "org.jetbrains:kotlin-css-jvm:+"
                 implementation "ch.qos.logback:logback-classic:$logback_version"
+
+                implementation "org.kodein.di:kodein-di-generic-jvm:$kodein_di_version"
+                implementation "org.kodein.di:kodein-di-conf-jvm:$kodein_di_version"
+
+                implementation "com.h2database:h2:$h2_version"
+                implementation "org.jetbrains.exposed:exposed:$exposed_version"
+                implementation 'com.zaxxer:HikariCP:3.3.1'
             }
         }
         jvmTest {
